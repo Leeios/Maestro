@@ -15,3 +15,4 @@ TODO
 - Generer couloir simple
 - Gerer collisions
 - Avancement automatique
+- Map de ++ couloirs generer en random
