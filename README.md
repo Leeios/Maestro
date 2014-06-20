@@ -6,7 +6,8 @@ Jam shake project
 
 TO START SERVER ON localhost:3000
 > npm update
->node server.js
+
+> node server.js
 
 =======
 config file to define port
