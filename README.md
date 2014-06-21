@@ -12,7 +12,15 @@ To start server on localhost:3000
 TODO
 =======
 
-- Generer couloir simple
-- Gerer collisions
-- Avancement automatique
+- Gerer collisions//switch techno -> ammo.js (couche sup de 3.js). Lire la doc et add la collision
+- Ajouter un perso 3eme personne ?
+- Avancement automatique //Gerable facilement, actuellement desactive pour prod
 - Map de ++ couloirs generer en random
+
+
+END
+=======
+
+Nettoyer les libs utilisees dans :
+- /views/templates/head.jade
+- /js/libs
