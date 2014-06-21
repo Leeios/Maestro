@@ -3,24 +3,83 @@ var socket = io.connect();
 
 if ( ! Detector.webgl ) {
 
-	Detector.addGetWebGLMessage();
-	document.getElementById( 'container' ).innerHTML = "";
+Detector.addGetWebGLMessage();
+document.getElementById( 'container' ).innerHTML = "";
+
 }
 
+/*Var three js*/
 var container, stats;
 
 var camera, controls, scene, renderer;
 
-// var mesh, texture;
+var mesh, player, texture;
 
-// var worldWidth = 256, worldDepth = 256,
-// worldHalfWidth = worldWidth / 2, worldHalfDepth = worldDepth / 2;
+var worldWidth = 256, worldDepth = 256,
+worldHalfWidth = worldWidth / 2, worldHalfDepth = worldDepth / 2;
 
 var clock = new THREE.Clock();
 
+/*Var cannon js*/
+
+var world, solver, physicsMaterial;
+var sphereShape, sphereBody, groundBody;
+
+
+/*MAIN*/
 function main() {
-	init();
-	animate();
+
+init();
+initCannon();
+animate();
+
+}
+
+function initCannon(){
+	// Setup our world
+	world = new CANNON.World();
+	world.quatNormalizeSkip = 0;
+	world.quatNormalizeFast = false;
+
+	var solver = new CANNON.GSSolver();
+
+	world.defaultContactMaterial.contactEquationStiffness = 1e9;
+	world.defaultContactMaterial.contactEquationRegularizationTime = 4;
+
+	solver.iterations = 7;
+	solver.tolerance = 0.1;
+	var split = true;
+	if(split)
+		world.solver = new CANNON.SplitSolver(solver);
+	else
+		world.solver = solver;
+
+	world.gravity.set(0,0,0);
+	world.broadphase = new CANNON.NaiveBroadphase();
+
+	// Create a slippery material (friction coefficient = 0.0)
+	physicsMaterial = new CANNON.Material("slipperyMaterial");
+	var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+															physicsMaterial,
+															0.0, // friction coefficient
+															0.3  // restitution
+															);
+	// We must add the contact materials to the world
+	world.addContactMaterial(physicsContactMaterial);
+
+	// Create a sphere
+	var mass = 5, radius = 1.3;
+	sphereShape = new CANNON.Sphere(radius);
+	sphereBody = new CANNON.RigidBody(mass,sphereShape,physicsMaterial);
+	sphereBody.position.set(0,5,0);
+	sphereBody.linearDamping = 0.9;
+	world.add(sphereBody);
+
+	// Create a plane
+	var groundShape = new CANNON.Plane();
+	var groundBody = new CANNON.RigidBody(0,groundShape,physicsMaterial);
+	groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+	world.add(groundBody);
 }
 
 function init() {
@@ -31,99 +90,38 @@ function init() {
 
 	scene = new THREE.Scene();
 
-	controls = new THREE.FirstPersonControls( camera );
-	controls.movementSpeed = 2000;
-	controls.lookSpeed = 0.1;
+	data = generateHeight( worldWidth, worldDepth );
 
-/*TEST*/
-	scene.add( new THREE.AmbientLight( 0x404040 ) );
+	var geometry = new THREE.PlaneGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
+	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 
-	var light = new THREE.DirectionalLight( 0xffffff );
-	light.position.set( 0, 1, 0 );
-	scene.add( light );
+	for ( var i = 0, l = geometry.vertices.length; i < l; i ++ ) {
 
+		geometry.vertices[ i ].y = data[ i ] * 10;
 
-	camera.position.x = 0;
-	camera.position.y = 0;
-
-	var texture = THREE.ImageUtils.loadTexture( '../img/tex_00.jpg' );
-	var material = new THREE.MeshBasicMaterial( { map: texture } );
-	var geometry = new THREE.BoxGeometry( 500, 500, 500 );
-
-	for (var i = 0; i < 5; i++) {
-		var box = new THREE.Mesh( geometry, material );
-		box.position.x = Math.random() * 9000;
-		box.position.y = Math.random() * 9000;
-		box.position.z = Math.random() * 9000;
-		scene.add ( box );
 	}
 
+	texture = new THREE.Texture( generateTexture( data, worldWidth, worldDepth ), new THREE.UVMapping(), THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping );
+	texture.needsUpdate = true;
 
-	//AMMO
+	mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
+	scene.add( mesh );
 
-	// var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
-	// var dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
-	// var overlappingPairCache = new Ammo.btDbvtBroadphase();
-	// var solver = new Ammo.btSequentialImpulseConstraintSolver();
-	// scene.world = new Ammo.btDiscreteDynamicsWorld( dispatcher, overlappingPairCache, solver, collisionConfiguration );
-	// scene.world.setGravity(new Ammo.btVector3(0, -12, 0));
+	geometry = new THREE.BoxGeometry( 400, 400, 400 );
+	material = new THREE.MeshBasicMaterial( {color: 0x45f8d3} );
+	player = new THREE.Mesh( geometry, material );
+	camera.position.y = 500;
+	camera.position.z = 1500;
+	player.add(camera);
+	scene.add(player);
 
-	// var groundShape = new Ammo.btBoxShape(new Ammo.btVector3( 25, 1, 25 )); // Create block 50x2x50
-	// var groundTransform = new Ammo.btTransform();
-	// groundTransform.setIdentity();
-	// groundTransform.setOrigin(new Ammo.btVector3( 0, -1, 0 )); // Set initial position
+	controls = new THREE.FirstPersonControls( player );
+	controls.movementSpeed = 1000;
+	controls.lookSpeed = 0.1;
 
-	// var groundMass = 0; // Mass of 0 means ground won't move from gravity or collisions
-	// var localInertia = new Ammo.btVector3(0, 0, 0);
-	// var motionState = new Ammo.btDefaultMotionState( groundTransform );
-	// var rbInfo = new Ammo.btRigidBodyConstructionInfo( groundMass, motionState, groundShape, localInertia );
-	// var groundAmmo = new Ammo.btRigidBody( rbInfo );
-	// scene.world.addRigidBody( groundAmmo );
-
-	// var mass = 3 * 3 * 3; // Matches box dimensions for simplicity
-	// var startTransform = new Ammo.btTransform();
-	// startTransform.setIdentity();
-	// startTransform.setOrigin(new Ammo.btVector3( 0, 20, 0 )); // Set initial position
-
-	// var localInertia = new Ammo.btVector3(0, 0, 0);
-
-	// var boxShape = new Ammo.btBoxShape(new Ammo.btVector3( 1.5, 1.5, 1.5 )); // Box is 3x3x3
-	// boxShape.calculateLocalInertia( mass, localInertia );
-
-	// var motionState = new Ammo.btDefaultMotionState( startTransform );
-	// var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, boxShape, localInertia );
-	// var boxAmmo = new Ammo.btRigidBody( rbInfo );
-	// scene.world.addRigidBody( boxAmmo );
-
-	// boxAmmo.mesh = box; // Assign the Three.js mesh in `box`, this is used to update the model position later
-	// // boxes.push( boxAmmo ); // Keep track of this box
-
-	// updateBoxes = function() {
-	// 	scene.world.stepSimulation( 1 / 60, 5 ); // Tells Ammo.js to apply physics for 1/60th of a second with a maximum of 5 steps
-	// 	var i, transform = new Ammo.btTransform(), origin, rotation;
-
-	// 	for ( i = 0; i < boxes.length; i++ ) {
-	// 		boxes[i].getMotionState().getWorldTransform( transform ); // Retrieve box position & rotation from Ammo
-
-	// 		// Update position
-	// 		origin = transform.getOrigin();
-	// 		boxes[i].mesh.position.x = origin.x();
-	// 		boxes[i].mesh.position.y = origin.y();
-	// 		boxes[i].mesh.position.z = origin.z();
-
-	// 		// Update rotation
-	// 		rotation = transform.getRotation();
-	// 		boxes[i].mesh.quaternion.x = rotation.x();
-	// 		boxes[i].mesh.quaternion.y = rotation.y();
-	// 		boxes[i].mesh.quaternion.z = rotation.z();
-	// 		boxes[i].mesh.quaternion.w = rotation.w();
-	// 	};
-	// };
-
-	//!AMMO
 
 	renderer = new THREE.WebGLRenderer();
-	renderer.setClearColor( 0xADD8E6 );
+	renderer.setClearColor( 0xbfd1e5 );
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
 	container.innerHTML = "";
@@ -140,19 +138,6 @@ function init() {
 	window.addEventListener( 'resize', onWindowResize, false );
 
 }
-
-function onWindowResize() {
-
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-
-	renderer.setSize( window.innerWidth, window.innerHeight );
-
-	controls.handleResize();
-
-}
-
-/* Original map generate
 
 function generateHeight( width, height ) {
 
@@ -241,11 +226,19 @@ function generateTexture( data, width, height ) {
 	return canvasScaled;
 
 }
-*/
-//
 
+/*Final functions*/
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	controls.handleResize();
+}
+
+var dt = 1/60;
 function animate() {
-
 	requestAnimationFrame( animate );
 
 	render();
@@ -259,3 +252,9 @@ function render() {
 	renderer.render( scene, camera );
 
 }
+
+window.addEventListener("click",function(e){
+	if(controls.enabled==true){
+		;
+	}
+});

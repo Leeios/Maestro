@@ -11,12 +11,12 @@ THREE.FirstPersonControls = function ( object, domElement ) {
 
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
 
-	this.movementSpeed = 0.05;
-	this.lookSpeed = 0.01;
+	this.movementSpeed = 1.0;
+	this.lookSpeed = 0.005;
 
 	this.lookVertical = true;
 	this.autoForward = false;
-	// this.invertVertical = false;
+	this.invertVertical = false;
 
 	this.activeLook = true;
 
@@ -25,9 +25,9 @@ THREE.FirstPersonControls = function ( object, domElement ) {
 	this.heightMin = 0.0;
 	this.heightMax = 1.0;
 
-	this.constrainVertical = false;
+	this.constrainVertical = true;
 	this.verticalMin = 0;
-	this.verticalMax = Math.PI;
+	this.verticalMax = Math.PI * 2;
 
 	this.autoSpeedFactor = 0.0;
 
@@ -39,7 +39,7 @@ THREE.FirstPersonControls = function ( object, domElement ) {
 	this.phi = 0;
 	this.theta = 0;
 
-	this.moveForward = false;//Leeios
+	this.moveForward = true;
 	this.moveBackward = false;
 	this.moveLeft = false;
 	this.moveRight = false;

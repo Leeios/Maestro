@@ -1,29 +1,10 @@
-body {
-	color: #808080;
-	font-family:Monospace;
-	font-size:13px;
-	text-align:center;
+html, body {
+	width: 100%;
+	height: 100%;
+}
 
-	background-color: #000;
-	margin: 0px;
+body {
+	background-color: #ffffff;
+	margin: 0;
 	overflow: hidden;
 }
-
-#info {
-	position: absolute;
-	top: 0px; width: 100%;
-	padding: 5px;
-	z-index: 100;
-}
-
-a {
-
-	color: #0080ff;
-}
-
-b { color: lightgreen }
-
-#stats { position: absolute; top:0; left: 0 }
-#stats #fps { background: transparent !important }
-#stats #fps #fpsText { color: #777 !important }
-#stats #fps #fpsGraph { display: none }
