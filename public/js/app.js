@@ -41,6 +41,9 @@ function init() {
 
 	scene = new THREE.Scene();
 
+	var worldx	= new THREEx.CannonWorld().start()
+	worldx.world.defaultContactMaterial.friction = 0.005
+
 	geometry = new THREE.PlaneGeometry( 2000, 2000, 2000, 50 );
 	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	material = new THREE.MeshLambertMaterial( { color: 0xdddddd } );
@@ -52,8 +55,7 @@ function init() {
 	geometry = new THREE.SphereGeometry( 50 );
 	material = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
 	player = new THREE.Mesh( geometry, material );
-	camera.position.y = 500;
-	camera.position.z = 1500;
+	camera.position.z = 1000;
 	player.add(camera);
 	scene.add(player);
 
@@ -62,7 +64,7 @@ function init() {
 	controls.lookSpeed = 0.1;
 
 
-	renderer = new THREE.WebGLRenderer();
+	renderer = new THREE.WebGLRenderer({antialias: true});
 	renderer.setClearColor( 0xbfd1e5 );
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
