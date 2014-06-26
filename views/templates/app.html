@@ -12,6 +12,8 @@ var texture;
 var geometry, material, player, opponent, ground;
 var controls;
 var clock = new THREE.Clock();
+var worldx, playerx, oppx;
+var objects = new Array();
 //  Skybox
 var imagePrefix = "/img/skybox/";
 var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
@@ -81,43 +83,103 @@ function init() {
 	// STATS
 	stats = new Stats();
 	statsx = new THREEx.RendererStats();
+	statsx.domElement.style.position = 'absolute'
+	statsx.domElement.style.left = '0px'
+	statsx.domElement.style.top = '0px'
 	document.body.appendChild( stats.domElement );
 	document.body.appendChild( statsx.domElement );
 
-	// SCENE
+	// SCENE & PHYS WORLD
 	scene = new THREE.Scene();
+	worldx = new THREEx.CannonWorld().start();
+	var stoneMaterial = new CANNON.Material('stone');
+	worldx.world.addContactMaterial(new CANNON.ContactMaterial(
+		stoneMaterial,
+		stoneMaterial,
+		0.3,	// friction
+		0.1	// Restitution
+	));
+
+	// LIGHT
+	var light = new THREE.AmbientLight( 0x404040 );
+	scene.add( light );
+
+	var spotLight = new THREE.SpotLight( 0xA71094, 1 );
+	spotLight.position.set( 100, 100, 100 );
+
+	spotLight.castShadow = true;
+
+	spotLight.shadowMapWidth = 1024;
+	spotLight.shadowMapHeight = 1024;
+
+	spotLight.shadowCameraNear = 500;
+	spotLight.shadowCameraFar = 4000;
+	spotLight.shadowCameraFov = 30;
+
+	scene.add( spotLight );
 
 	// CAMERA
 	camera = new THREE.TargetCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-	// scene.add( camera );
 
 	// MESH
+
 	//  Material
 	texture = THREE.ImageUtils.loadTexture('/img/tex_00.jpg');
 	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 	texture.anisotropy = 16;
-	material = new THREE.MeshBasicMaterial( {map: texture} );
+	material = new THREE.MeshPhongMaterial( {specular: 0x45819A, map: texture} );
 
 	//  Ground
-	geometry = new THREE.PlaneGeometry( 8000, 8000 );
+	geometry = new THREE.PlaneGeometry( 1000, 1000 );
 	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	ground = new THREE.Mesh( geometry, material );
+	ground.position.y = -5;
 	scene.add( ground );
+	var groundx	= new THREEx.CannonBody({
+		mesh	: ground,
+		material: stoneMaterial,
+		mass	: 0
+	}).addTo(worldx);
+	objects.push(groundx);
 
 	//  Player
-	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	geometry = new THREE.SphereGeometry( 7 );
 	player = new THREE.Mesh( geometry, material );
-	// player.position.y = 50;
 	scene.add( player );
+	playerx	= new THREEx.CannonBody({
+		mesh	: player,
+		material: stoneMaterial,
+		mass	: 0
+	}).addTo(worldx);
+	objects.push(playerx);
 
 	//  Opponent
-	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	// geometry = new THREE.SphereGeometry( 7 );
 	opponent = new THREE.Mesh( geometry, material );
 	opponent.position.y = 50;
 	scene.add( opponent );
+	var oppx	= new THREEx.CannonBody({
+		mesh	: opponent,
+		material: stoneMaterial,
+		mass	: 0
+	}).addTo(worldx);
+	objects.push(oppx);
+
+	// MISC MESH
+	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	test = new THREE.Mesh( geometry, material );
+	test.position.x = 50;
+	test.position.z = 50;
+	scene.add( test );
+	var testx	= new THREEx.CannonBody({
+		mesh	: test,
+		material: stoneMaterial,
+		mass	: 0
+	}).addTo(worldx);
+	objects.push(testx);
 
 	// SKYBOX
-	var skyGeometry = new THREE.BoxGeometry( 10000, 10000, 10000 );
+	var skyGeometry = new THREE.BoxGeometry( 1000, 1000, 1000 );
 	var materialArray = [];
 	for (var i = 0; i < 6; i++)
 		materialArray.push( new THREE.MeshBasicMaterial({
@@ -159,13 +221,21 @@ function init() {
 	container.appendChild( renderer.domElement );
 
 	//  Listen socket
-	socket.on('s_pos', function (data) {
-		console.log(data);
-		opponent.position.set(data.message.x, data.message.y, data.message.z);
+	socket.on('opp', function (data) {
+		opponent.position.set(data.message.position.x, data.message.position.y, data.message.position.z);
+		// opponent.rotation.set(data.message.rotation._x, data.message.rotation._y, data.message.rotation._z);
+		// opponent.rotation.y = data.message.rotation._y;
+		//
+		// geometry = new THREE.BoxGeometry( 10, 10, 10 );
+		// opponent = new THREE.Mesh( geometry, material );
+		// opponent.position.y = 50;
+		// scene.add( opponent );
+
 	});
 
 	//  Resize
 	window.addEventListener( 'resize', onWindowResize, false );
+
 
 }
 
@@ -176,8 +246,6 @@ function onWindowResize() {
 
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
-	controls.handleResize();
-
 	render();
 
 }
@@ -187,14 +255,21 @@ function animate() {
 	requestAnimationFrame( animate );
 
 	render();
-	//Socket emit
-	socket.emit('position', finalObject.position);
 	//Update
+	world_attempt();
+	socket.emit('player', {position: playerx.body.position, quaternion: playerx.body.quaternion});
 	controls.update( clock.getDelta() );
 	camera.update( clock.getDelta() );
 	stats.update();
 	statsx.update( renderer );
 
+}
+
+function world_attempt() {
+	objects.forEach(function (obj) {
+		// console.log (obj);
+		obj.update( clock.getDelta() );
+	});
 }
 
 function render() {

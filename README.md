@@ -13,6 +13,8 @@ To start server on localhost:3000
 TODO
 =======
 
+- Bug de TP lorsque pause restart
+- Quelles donnees echanger ? rotation en private
 - Vue 3rd person avec y
 - Gerer collisions
 
