@@ -116,17 +116,6 @@ function init() {
 	opponent.position.y = 50;
 	scene.add( opponent );
 
-	// Link Camera
-	camera.addTarget({
-		name: 'Main',
-		targetObject: player,
-		cameraPosition: new THREE.Vector3(0, 20, 80),
-		fixed: false,
-		stiffness: 1,
-		matchRotation: false
-	});
-	camera.setTarget( 'Main' );
-
 	// SKYBOX
 	var skyGeometry = new THREE.BoxGeometry( 10000, 10000, 10000 );
 	var materialArray = [];
@@ -149,6 +138,17 @@ function init() {
 	// controls.rollSpeed = 1;
 	// controls.autoForward = false;
 	// controls.dragToLook = false;
+
+	// Link Camera
+	camera.addTarget({
+		name: 'Main',
+		targetObject: yawObject,
+		cameraPosition: new THREE.Vector3(0, 20, 80),
+		fixed: false,
+		stiffness: 1,
+		matchRotation: false
+	});
+	camera.setTarget( 'Main' );
 
 	// RENDER
 	renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -188,7 +188,7 @@ function animate() {
 
 	render();
 	//Socket emit
-	socket.emit('position', player.position);
+	socket.emit('position', yawObject.position);
 	//Update
 	controls.update( clock.getDelta() );
 	camera.update( clock.getDelta() );

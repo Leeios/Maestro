@@ -13,9 +13,7 @@ To start server on localhost:3000
 TODO
 =======
 
-- Problemes sur la view 3rd person avec mouse lock:
-	_La camera ne suit plus l'objet
-	_L'objet renvoie toujours les coordonnees 0 0 0
+- Vue 3rd person avec y
 - Gerer collisions
 
 
