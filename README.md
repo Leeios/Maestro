@@ -9,13 +9,14 @@ To start server on localhost:3000
 
 > node server.js
 
+
 TODO
 =======
 
-- Gerer collisions//switch techno -> ammo.js (couche sup de 3.js). Lire la doc et add la collision
-- Ajouter un perso 3eme personne ?
-- Avancement automatique //Gerable facilement, actuellement desactive pour prod
-- Map de ++ couloirs generer en random
+- Problemes sur la view 3rd person avec mouse lock
+	La camera ne suit plus l'objet
+	L'objet renvoie toujours les coordonnees 0 0 0
+- Gerer collisions
 
 
 END

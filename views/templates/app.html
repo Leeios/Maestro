@@ -1,23 +1,76 @@
 <script type='text/javascript'>
 
-//Send a new client to server
+// Send a new client to server
 var socket = io.connect();
-//Detector webGL
+// Detector webGL
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-//Global var
+// Global var
 var container, stats, statsx;
 var camera, scene, renderer;
 var texture;
 var geometry, material, player, opponent, ground;
 var controls;
 var clock = new THREE.Clock();
-//Skybox vars
+//  Skybox
 var imagePrefix = "/img/skybox/";
 var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
 var imageSuffix = ".jpg";
 
-//EXE
+// Detect mouse lock
+var blocker = document.getElementById( 'blocker' );
+var instructions = document.getElementById( 'instructions' );
+
+var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+if ( havePointerLock ) {
+	var element = document.body;
+	var pointerlockchange = function ( event ) {
+		if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
+			controls.enabled = true;
+			blocker.style.display = 'none';
+		} else {
+			controls.enabled = false;
+			blocker.style.display = '-webkit-box';
+			blocker.style.display = '-moz-box';
+			blocker.style.display = 'box';
+			instructions.style.display = '';
+		}
+	}
+	var pointerlockerror = function ( event ) {
+		instructions.style.display = '';
+	}
+	// Hook pointer lock state change events
+	document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+	document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+	document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+	document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+	document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+	document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
+	instructions.addEventListener( 'click', function ( event ) {
+		instructions.style.display = 'none';
+		// Ask the browser to lock the pointer
+		element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+		if ( /Firefox/i.test( navigator.userAgent ) ) {
+			var fullscreenchange = function ( event ) {
+				if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+					document.removeEventListener( 'fullscreenchange', fullscreenchange );
+					document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+					element.requestPointerLock();
+				}
+			}
+			document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+			document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+			element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+			element.requestFullscreen();
+		} else {
+			element.requestPointerLock();
+		}
+	}, false );
+} else {
+	instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+}
+
+// EXE
 init();
 animate();
 
@@ -36,30 +89,34 @@ function init() {
 
 	// CAMERA
 	camera = new THREE.TargetCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-	scene.add( camera );
+	// scene.add( camera );
 
-	//MESH
+	// MESH
+	//  Material
 	texture = THREE.ImageUtils.loadTexture('/img/tex_00.jpg');
 	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 	texture.anisotropy = 16;
 	material = new THREE.MeshBasicMaterial( {map: texture} );
 
+	//  Ground
 	geometry = new THREE.PlaneGeometry( 8000, 8000 );
 	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	ground = new THREE.Mesh( geometry, material );
 	scene.add( ground );
 
+	//  Player
 	geometry = new THREE.BoxGeometry( 10, 10, 10 );
 	player = new THREE.Mesh( geometry, material );
-	player.position.y = 50;
+	// player.position.y = 50;
 	scene.add( player );
 
+	//  Opponent
 	geometry = new THREE.BoxGeometry( 10, 10, 10 );
 	opponent = new THREE.Mesh( geometry, material );
 	opponent.position.y = 50;
 	scene.add( opponent );
 
-	//Link Camera
+	// Link Camera
 	camera.addTarget({
 		name: 'Main',
 		targetObject: player,
@@ -70,7 +127,7 @@ function init() {
 	});
 	camera.setTarget( 'Main' );
 
-	//SKYBOX
+	// SKYBOX
 	var skyGeometry = new THREE.BoxGeometry( 10000, 10000, 10000 );
 	var materialArray = [];
 	for (var i = 0; i < 6; i++)
@@ -83,25 +140,32 @@ function init() {
 	scene.add( skyBox );
 
 	// CONTROLS
-	controls = new THREE.FlyControls( player );
+	controls = new THREE.PointerLockControls( player );
+	scene.add( controls.getObject() );
 
-	controls.movementSpeed = 100;
-	controls.domElement = container;
-	controls.rollSpeed = 1;
-	controls.autoForward = false;
-	controls.dragToLook = false;
+	// controls = new THREE.FlyControls( player );
+	// controls.movementSpeed = 100;
+	// controls.domElement = container;
+	// controls.rollSpeed = 1;
+	// controls.autoForward = false;
+	// controls.dragToLook = false;
 
-	//RENDER
+	// RENDER
 	renderer = new THREE.WebGLRenderer( { antialias: true } );
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
+	//  Put in container
 	container.innerHTML = "";
 	container.appendChild( renderer.domElement );
-	window.addEventListener( 'resize', onWindowResize, false );
+
+	//  Listen socket
 	socket.on('s_pos', function (data) {
 		console.log(data);
-		opponent.position.set(data.x, data.y, data.z);
+		opponent.position.set(data.message.x, data.message.y, data.message.z);
 	});
+
+	//  Resize
+	window.addEventListener( 'resize', onWindowResize, false );
 
 }
 
@@ -123,9 +187,11 @@ function animate() {
 	requestAnimationFrame( animate );
 
 	render();
-	camera.update();
-	controls.update( clock.getDelta() );
+	//Socket emit
 	socket.emit('position', player.position);
+	//Update
+	controls.update( clock.getDelta() );
+	camera.update( clock.getDelta() );
 	stats.update();
 	statsx.update( renderer );
 
@@ -135,4 +201,5 @@ function render() {
 
 	renderer.render( scene, camera );
 }
+
 </script>
