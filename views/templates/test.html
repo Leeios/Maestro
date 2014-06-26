@@ -9,12 +9,11 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 var container, stats, statsx;
 var camera, scene, renderer;
 var texture;
-var geometry, material, player, opponent, ground;
+var geometry, material, ground;
 var controls;
 var clock = new THREE.Clock();
-var worldx, playerx, oppx;
-var objects = [];
-var test;
+var world, physicsMaterial;
+var objs, c_objs = [];
 //  Skybox
 var imagePrefix = "/img/skybox/";
 var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
@@ -92,14 +91,35 @@ function init() {
 
 	// SCENE & PHYS WORLD
 	scene = new THREE.Scene();
-	worldx = new THREEx.CannonWorld().start();
+	world = new CANNON.World();
 	var stoneMaterial = new CANNON.Material('stone');
-	worldx.world.addContactMaterial(new CANNON.ContactMaterial(
-		stoneMaterial,
-		stoneMaterial,
-		0.3, // friction
-		0.1 // Restitution
-	));
+	world.quatNormalizeSkip = 0;
+	world.quatNormalizeFast = false;
+
+	var solver = new CANNON.GSSolver();
+
+	world.defaultContactMaterial.contactEquationStiffness = 1e9;
+	world.defaultContactMaterial.contactEquationRegularizationTime = 4;
+
+	solver.iterations = 7;
+	solver.tolerance = 0.1;
+	var split = true;
+	if(split)
+		world.solver = new CANNON.SplitSolver(solver);
+	else
+		world.solver = solver;
+	world.gravity.set(0,0,0);
+	world.broadphase = new CANNON.NaiveBroadphase();
+	// Create a slippery material (friction coefficient = 0.0)
+	physicsMaterial = new CANNON.Material("slipperyMaterial");
+	var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+															physicsMaterial,
+															0.0, // friction coefficient
+															0.3  // restitution
+															);
+	// We must add the contact materials to the world
+	world.addContactMaterial(physicsContactMaterial);
+
 
 	// LIGHT
 	var light = new THREE.AmbientLight( 0x404040 );
@@ -135,50 +155,46 @@ function init() {
 	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	ground = new THREE.Mesh( geometry, material );
 	scene.add( ground );
-	var groundx	= new THREEx.CannonBody({
-		mesh	: ground,
-		material: stoneMaterial,
-		mass	: 0
-	}).addTo(worldx);
-	objects.push(groundx);
+	var groundShape = new CANNON.Plane();
+	var groundBody = new CANNON.RigidBody(0,groundShape,physicsMaterial);
+	groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+	world.add(groundBody);
 
 	//  Player
-	geometry = new THREE.SphereGeometry( 7 );
-	player = new THREE.Mesh( geometry, material );
+	var ballShape = new CANNON.Sphere( 7 );
+	var playerx = new CANNON.RigidBody(0,boxShape);
+	playerx.useQuaternion = true;
+	world.add(playerx);
+	c_objs.push(playerx);
+	geometry = new THREE.SphereGeometry( ballShape.radius );
+	var player = new THREE.Mesh( geometry, material );
 	scene.add( player );
-	playerx	= new THREEx.CannonBody({
-		mesh	: player,
-		material: stoneMaterial,
-		mass	: 0,
-		cannon2three: false
-	}).addTo(worldx);
-	objects.push(playerx);
+	obj.push(player);
 
 	//  Opponent
-	// geometry = new THREE.SphereGeometry( 7 );
-	opponent = new THREE.Mesh( geometry, material );
-	// opponent.position.y = 50;
-	scene.add( opponent );
-	var oppx	= new THREEx.CannonBody({
-		mesh	: opponent,
-		material: stoneMaterial,
-		mass	: 0
-	}).addTo(worldx);
-	objects.push(oppx);
+	var oppx = new CANNON.RigidBody(0,ballShape);
+	oppx.useQuaternion = true;
+	world.add(oppx);
+	c_objs.push(oppx);
+	var opp = new THREE.Mesh( geometry, material );
+	scene.add( opp );
+	obj.push( opp );
+
 
 	// MISC MESH
-	geometry = new THREE.BoxGeometry( 10, 10, 10 );
-	test = new THREE.Mesh( geometry, material );
-	test.position.x = -50;
-	test.position.y = 10;
-	scene.add( test );
-	var testx	= new THREEx.CannonBody({
-		mesh	: test,
-		material: stoneMaterial,
-		mass	: 0,
-		cannon2three: false
-	}).addTo(worldx);
-	objects.push(testx);
+	var size = 0.5;
+	var he = new CANNON.Vec3(size,size,size*0.1);
+	var boxShape = new CANNON.Box(he);
+	var testx = new CANNON.RigidBody(0,boxShape);
+	testx.useQuaternion = true;
+	world.add(testx);
+	c_objs.push(testx);
+	geometry = new THREE.BoxGeometry(he.x*2,he.y*2,he.z*2);
+	var test = new THREE.Mesh( geometry, material );
+	test.position.set(-50, 0, 10);
+	testx.position.set(-50, 0, 10);
+	scene.add( opp );
+	obj.push( opp );
 
 	// SKYBOX
 	var skyGeometry = new THREE.BoxGeometry( 1000, 1000, 1000 );
@@ -251,13 +267,15 @@ function onWindowResize() {
 
 }
 
+var dt = 1/60;
 function animate() {
 
 	requestAnimationFrame( animate );
 
 	// Update
 	render();
-	world_attempt();
+	world.step( dt );
+	update_world();
 	socket.emit('player', {position: finalObject.position, rotation: finalObject.rotation});
 	//  Scene update
 	controls.update( clock.getDelta() );
@@ -268,11 +286,11 @@ function animate() {
 
 }
 
-function world_attempt() {
-	objects.forEach(function (obj) {
-		// console.log (obj);
-		obj.update( clock.getDelta() );
-	});
+function update_world() {
+	for( var i = 0; i < c_objs.length; i++) {
+		c_objs[i].position.copy(objs[i].position);
+		c_objs[i].quaternion.copy(objs[i].quaternion);
+	}
 }
 
 function render() {

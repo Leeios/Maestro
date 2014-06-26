@@ -82,6 +82,7 @@ THREEx.CannonBody	= function(opts){
 
 		var pos
 		this.update	= function(delta, now){
+			console.log('test')
 			// get position/quaternion in worldMatrix
 			mesh.updateMatrixWorld()
 			var position	= new THREE.Vector3().getPositionFromMatrix(mesh.matrixWorld)
