@@ -13,7 +13,7 @@ var geometry, material, player, opponent, ground;
 var controls;
 var clock = new THREE.Clock();
 var worldx, playerx, oppx;
-var objects = new Array();
+var objects = [];
 //  Skybox
 var imagePrefix = "/img/skybox/";
 var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
@@ -83,9 +83,9 @@ function init() {
 	// STATS
 	stats = new Stats();
 	statsx = new THREEx.RendererStats();
-	statsx.domElement.style.position = 'absolute'
-	statsx.domElement.style.left = '0px'
-	statsx.domElement.style.top = '0px'
+	statsx.domElement.style.position = 'absolute';
+	statsx.domElement.style.left = '0px';
+	statsx.domElement.style.top = '0px';
 	document.body.appendChild( stats.domElement );
 	document.body.appendChild( statsx.domElement );
 
@@ -96,8 +96,8 @@ function init() {
 	worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 		stoneMaterial,
 		stoneMaterial,
-		0.3,	// friction
-		0.1	// Restitution
+		0.3, // friction
+		0.1 // Restitution
 	));
 
 	// LIGHT
@@ -156,7 +156,7 @@ function init() {
 	//  Opponent
 	// geometry = new THREE.SphereGeometry( 7 );
 	opponent = new THREE.Mesh( geometry, material );
-	opponent.position.y = 50;
+	// opponent.position.y = 50;
 	scene.add( opponent );
 	var oppx	= new THREEx.CannonBody({
 		mesh	: opponent,
@@ -224,7 +224,7 @@ function init() {
 	socket.on('opp', function (data) {
 		opponent.position.set(data.message.position.x, data.message.position.y, data.message.position.z);
 		// opponent.rotation.set(data.message.rotation._x, data.message.rotation._y, data.message.rotation._z);
-		// opponent.rotation.y = data.message.rotation._y;
+		opponent.rotation.y = data.message.rotation._y;
 		//
 		// geometry = new THREE.BoxGeometry( 10, 10, 10 );
 		// opponent = new THREE.Mesh( geometry, material );
@@ -257,7 +257,7 @@ function animate() {
 	render();
 	//Update
 	world_attempt();
-	socket.emit('player', {position: playerx.body.position, quaternion: playerx.body.quaternion});
+	socket.emit('player', {position: finalObject.position, rotation: finalObject.rotation});
 	controls.update( clock.getDelta() );
 	camera.update( clock.getDelta() );
 	stats.update();
