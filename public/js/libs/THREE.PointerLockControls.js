@@ -1,7 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  */
-var yawObject;
+var finalObject;
 
 THREE.PointerLockControls = function ( camera ) {
 
@@ -12,9 +12,9 @@ THREE.PointerLockControls = function ( camera ) {
 	var pitchObject = new THREE.Object3D();
 	pitchObject.add( camera );
 
-	yawObject = new THREE.Object3D();
-	yawObject.position.y = 10;
-	yawObject.add( pitchObject );
+	finalObject = new THREE.Object3D();
+	finalObject.position.y = 10;
+	finalObject.add( pitchObject );
 
 	var moveForward = false;
 	var moveBackward = false;
@@ -37,7 +37,7 @@ THREE.PointerLockControls = function ( camera ) {
 		var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
 		var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
-		yawObject.rotation.y -= movementX * 0.002;
+		finalObject.rotation.y -= movementX * 0.002;
 		pitchObject.rotation.x -= movementY * 0.002;
 
 		pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
@@ -112,7 +112,7 @@ THREE.PointerLockControls = function ( camera ) {
 
 	this.getObject = function () {
 
-		return yawObject;
+		return finalObject;
 
 	};
 
@@ -132,7 +132,7 @@ THREE.PointerLockControls = function ( camera ) {
 
 		return function( v ) {
 
-			rotation.set( pitchObject.rotation.x, yawObject.rotation.y, 0 );
+			rotation.set( pitchObject.rotation.x, finalObject.rotation.y, 0 );
 
 			v.copy( direction ).applyEuler( rotation );
 
@@ -166,14 +166,14 @@ THREE.PointerLockControls = function ( camera ) {
 
 		}
 
-		yawObject.translateX( velocity.x * delta );
-		yawObject.translateY( velocity.y * delta );
-		yawObject.translateZ( velocity.z * delta );
+		finalObject.translateX( velocity.x * delta );
+		finalObject.translateY( velocity.y * delta );
+		finalObject.translateZ( velocity.z * delta );
 
-		if ( yawObject.position.y < 10 ) {
+		if ( finalObject.position.y < 10 ) {
 
 			velocity.y = 0;
-			yawObject.position.y = 10;
+			finalObject.position.y = 10;
 
 			canJump = true;
 

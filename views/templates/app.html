@@ -142,7 +142,7 @@ function init() {
 	// Link Camera
 	camera.addTarget({
 		name: 'Main',
-		targetObject: yawObject,
+		targetObject: finalObject,
 		cameraPosition: new THREE.Vector3(0, 20, 80),
 		fixed: false,
 		stiffness: 1,
@@ -188,7 +188,7 @@ function animate() {
 
 	render();
 	//Socket emit
-	socket.emit('position', yawObject.position);
+	socket.emit('position', finalObject.position);
 	//Update
 	controls.update( clock.getDelta() );
 	camera.update( clock.getDelta() );
