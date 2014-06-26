@@ -11,7 +11,6 @@ var routes = require('./routes');
 app.set('view engine', 'jade');
 
 //socket
-var idUser = 0;
 io.on('connection', routes.socket);
 
 //path

@@ -1,0 +1,138 @@
+<script type='text/javascript'>
+
+//Send a new client to server
+var socket = io.connect();
+//Detector webGL
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+//Global var
+var container, stats, statsx;
+var camera, scene, renderer;
+var texture;
+var geometry, material, player, opponent, ground;
+var controls;
+var clock = new THREE.Clock();
+//Skybox vars
+var imagePrefix = "/img/skybox/";
+var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
+var imageSuffix = ".jpg";
+
+//EXE
+init();
+animate();
+
+function init() {
+
+	container = document.getElementById( 'container' );
+
+	// STATS
+	stats = new Stats();
+	statsx = new THREEx.RendererStats();
+	document.body.appendChild( stats.domElement );
+	document.body.appendChild( statsx.domElement );
+
+	// SCENE
+	scene = new THREE.Scene();
+
+	// CAMERA
+	camera = new THREE.TargetCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+	scene.add( camera );
+
+	//MESH
+	texture = THREE.ImageUtils.loadTexture('/img/tex_00.jpg');
+	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+	texture.anisotropy = 16;
+	material = new THREE.MeshBasicMaterial( {map: texture} );
+
+	geometry = new THREE.PlaneGeometry( 8000, 8000 );
+	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+	ground = new THREE.Mesh( geometry, material );
+	scene.add( ground );
+
+	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	player = new THREE.Mesh( geometry, material );
+	player.position.y = 50;
+	scene.add( player );
+
+	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	opponent = new THREE.Mesh( geometry, material );
+	opponent.position.y = 50;
+	scene.add( opponent );
+
+	//Link Camera
+	camera.addTarget({
+		name: 'Main',
+		targetObject: player,
+		cameraPosition: new THREE.Vector3(0, 20, 80),
+		fixed: false,
+		stiffness: 1,
+		matchRotation: false
+	});
+	camera.setTarget( 'Main' );
+
+	//SKYBOX
+	var skyGeometry = new THREE.BoxGeometry( 10000, 10000, 10000 );
+	var materialArray = [];
+	for (var i = 0; i < 6; i++)
+		materialArray.push( new THREE.MeshBasicMaterial({
+			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
+			side: THREE.BackSide
+		}));
+	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
+	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
+	scene.add( skyBox );
+
+	// CONTROLS
+	controls = new THREE.FlyControls( player );
+
+	controls.movementSpeed = 100;
+	controls.domElement = container;
+	controls.rollSpeed = 1;
+	controls.autoForward = false;
+	controls.dragToLook = false;
+
+	//RENDER
+	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	container.innerHTML = "";
+	container.appendChild( renderer.domElement );
+	window.addEventListener( 'resize', onWindowResize, false );
+	socket.on('s_pos', function (data) {
+		console.log(data);
+		opponent.position.set(data.x, data.y, data.z);
+	});
+
+}
+
+function onWindowResize() {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	controls.handleResize();
+
+	render();
+
+}
+
+function animate() {
+
+	requestAnimationFrame( animate );
+
+	render();
+	camera.update();
+	controls.update( clock.getDelta() );
+	socket.emit('position', player.position);
+	stats.update();
+	statsx.update( renderer );
+
+}
+
+function render() {
+
+	renderer.render( scene, camera );
+}
+</script>
