@@ -82,10 +82,9 @@ THREEx.CannonBody	= function(opts){
 
 		var pos
 		this.update	= function(delta, now){
-			console.log('test')
 			// get position/quaternion in worldMatrix
 			mesh.updateMatrixWorld()
-			var position	= new THREE.Vector3().getPositionFromMatrix(mesh.matrixWorld)
+			var position	= new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld)
 			var quaternion	= new THREE.Quaternion().setFromRotationMatrix(mesh.matrixWorld)
 			// copy mesh.position to body.position
 			body.position.x		= position.x
@@ -110,7 +109,7 @@ THREEx.CannonBody.prototype.applyImpulse = function(force, deltaTime) {
 	// apply the force to the center of the ball
 	ball.updateMatrixWorld();
 	// get world position
-	var ballPosition= new THREE.Vector3().getPositionFromMatrix( ball.matrixWorld )
+	var ballPosition= new THREE.Vector3().setFromMatrixPosition( ball.matrixWorld )
 
 	// do an impulse to the ball
 	var body	= ball.userData.cannonBody.body
@@ -124,7 +123,7 @@ THREEx.CannonBody.prototype.applyForce = function(force) {
 	// apply the force to the center of the ball
 	ball.updateMatrixWorld();
 	// get world position
-	var ballPosition= new THREE.Vector3().getPositionFromMatrix( ball.matrixWorld )
+	var ballPosition= new THREE.Vector3().setFromMatrixPosition( ball.matrixWorld )
 
 	// do an impulse to the ball
 	var body	= ball.userData.cannonBody.body
