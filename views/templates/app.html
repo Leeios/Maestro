@@ -60,8 +60,6 @@ if ( havePointerLock ) {
 	instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
 }
 
-// Global var
-var stats, statsx;
 
 //  Skybox
 var imagePrefix = "/img/skybox/";
@@ -72,6 +70,8 @@ var renderer	= new THREE.WebGLRenderer({antialias: true});
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
+//INIT
+var stats, statsx;
 var updateFcts	= [];
 var scene	= new THREE.Scene();
 var camera = new THREE.TargetCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
@@ -105,27 +105,27 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 })();
 
 // SKYBOX
-(function() {
+// (function() {
 
-	var skyGeometry = new THREE.BoxGeometry( 300, 300, 300 );
-	var materialArray = [];
-	for (var i = 0; i < 6; i++)
-		materialArray.push( new THREE.MeshBasicMaterial({
-			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
-			side: THREE.BackSide
-		}));
-	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
-	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
-	scene.add( skyBox );
-	var skyx	= new THREEx.CannonBody({
-		mesh	: skyBox,
-		material : stoneMaterial,
-		mass	: 0
-	}).addTo(worldx);
-	updateFcts.push(function(delta, now) {
-		skyx.update(delta, now);
-	});
-})();
+// 	var skyGeometry = new THREE.BoxGeometry( 300, 300, 300 );
+// 	var materialArray = [];
+// 	for (var i = 0; i < 6; i++)
+// 		materialArray.push( new THREE.MeshBasicMaterial({
+// 			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
+// 			side: THREE.BackSide
+// 		}));
+// 	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
+// 	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
+// 	scene.add( skyBox );
+// 	var skyx	= new THREEx.CannonBody({
+// 		mesh	: skyBox,
+// 		material : stoneMaterial,
+// 		mass	: 0
+// 	}).addTo(worldx);
+// 	updateFcts.push(function(delta, now) {
+// 		skyx.update(delta, now);
+// 	});
+// })();
 
 // LIGHT
 (function() {
@@ -154,11 +154,13 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 	texture.anisotropy = 16;
 	var material = new THREE.MeshPhongMaterial( {specular: 0x45819A, map: texture} );
+	material.side = THREE.DoubleSide;
 
 	//  Ground
 	var geometry = new THREE.PlaneGeometry( 1000, 1000 );
 	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	ground = new THREE.Mesh( geometry, material );
+	ground.position.y = -20
 	scene.add( ground );
 	var groundx	= new THREEx.CannonBody({
 		mesh	: ground,
@@ -176,7 +178,7 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	playerx	= new THREEx.CannonBody({
 		mesh	: player,
 		material : stoneMaterial,
-		mass	: 0,
+		mass	: 0.01,
 	}).addTo(worldx);
 	updateFcts.push(function(delta, now) {
 		playerx.update(delta, now);
@@ -198,29 +200,32 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 
 	// MISC MESH
 	geometry = new THREE.BoxGeometry( 10, 10, 10 );
+	for (var i = 0; i < 10; i++) {
 	test = new THREE.Mesh( geometry, material );
-	test.position.x = -50;
-	test.position.y = 10;
+	test.position.x = -30 + Math.random() * 60;
+	test.position.y = -30 + Math.random() * 60;
+	test.position.z = -30 + Math.random() * 60;
 	scene.add( test );
 	var testx	= new THREEx.CannonBody({
 		mesh	: test,
 		material : stoneMaterial,
-		mass	: 0,
+		mass	: 0.01,
 	}).addTo(worldx);
 	updateFcts.push(function(delta, now) {
 		testx.update(delta, now);
 	});
+	}
 })();
 
 // CAMERA & CONTROLS
 (function() {
 
-	controls = new THREE.PointerLockControls( playerx.mesh );
-	scene.add( controls.getObject() );
+	// controls = new THREE.PointerLockControls( playerx.mesh );
+	// scene.add( controls.getObject() );
 
 	camera.addTarget({
 		name: 'Player',
-		targetObject: finalObject,
+		targetObject: playerx.mesh,
 		cameraPosition: new THREE.Vector3(0, 20, 80),
 		fixed: false,
 		stiffness: 1,
@@ -230,7 +235,7 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 
 	updateFcts.push(function(delta, now)
 	{
-		controls.update(delta, now);
+		// controls.update(delta, now);
 		camera.update(delta, now);
 	});
 })();
@@ -267,7 +272,7 @@ function onWindowResize() {
 var lastTimeMsec= null;
 requestAnimationFrame(function animate(nowMsec){
 	// socket
-	socket.emit('player', {position: finalObject.position, rotation: finalObject.rotation});
+	// socket.emit('player', {position: finalObject.position, rotation: finalObject.rotation});
 	// keep looping
 	requestAnimationFrame( animate );
 	// measure time

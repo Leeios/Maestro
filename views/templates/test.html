@@ -1,301 +1,89 @@
-<script type='text/javascript'>
+<script>
 
-// Send a new client to server
-var socket = io.connect();
-// Detector webGL
-if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-
-// Global var
-var container, stats, statsx;
-var camera, scene, renderer;
-var texture;
-var geometry, material, ground;
-var controls;
-var clock = new THREE.Clock();
-var world, physicsMaterial;
-var objs, c_objs = [];
-//  Skybox
-var imagePrefix = "/img/skybox/";
-var directions  = ["px", "nx", "py", "ny", "pz", "nz"];
-var imageSuffix = ".jpg";
-
-// Detect mouse lock
-var blocker = document.getElementById( 'blocker' );
-var instructions = document.getElementById( 'instructions' );
-
-var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
-if ( havePointerLock ) {
-	var element = document.body;
-	var pointerlockchange = function ( event ) {
-		if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
-			controls.enabled = true;
-			blocker.style.display = 'none';
-		} else {
-			controls.enabled = false;
-			blocker.style.display = '-webkit-box';
-			blocker.style.display = '-moz-box';
-			blocker.style.display = 'box';
-			instructions.style.display = '';
-		}
-	}
-	var pointerlockerror = function ( event ) {
-		instructions.style.display = '';
-	}
-	// Hook pointer lock state change events
-	document.addEventListener( 'pointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'pointerlockerror', pointerlockerror, false );
-	document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
-	document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
-	instructions.addEventListener( 'click', function ( event ) {
-		instructions.style.display = 'none';
-		// Ask the browser to lock the pointer
-		element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
-		if ( /Firefox/i.test( navigator.userAgent ) ) {
-			var fullscreenchange = function ( event ) {
-				if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
-					document.removeEventListener( 'fullscreenchange', fullscreenchange );
-					document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
-					element.requestPointerLock();
-				}
-			}
-			document.addEventListener( 'fullscreenchange', fullscreenchange, false );
-			document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
-			element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
-			element.requestFullscreen();
-		} else {
-			element.requestPointerLock();
-		}
-	}, false );
-} else {
-	instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
-}
-
-// EXE
-init();
-animate();
-
-function init() {
-
-	container = document.getElementById( 'container' );
-
-	// STATS
-	stats = new Stats();
-	statsx = new THREEx.RendererStats();
-	statsx.domElement.style.position = 'absolute';
-	statsx.domElement.style.left = '0px';
-	statsx.domElement.style.top = '0px';
-	document.body.appendChild( stats.domElement );
-	document.body.appendChild( statsx.domElement );
-
-	// SCENE & PHYS WORLD
-	scene = new THREE.Scene();
-	world = new CANNON.World();
-	var stoneMaterial = new CANNON.Material('stone');
-	world.quatNormalizeSkip = 0;
-	world.quatNormalizeFast = false;
-
-	var solver = new CANNON.GSSolver();
-
-	world.defaultContactMaterial.contactEquationStiffness = 1e9;
-	world.defaultContactMaterial.contactEquationRegularizationTime = 4;
-
-	solver.iterations = 7;
-	solver.tolerance = 0.1;
-	var split = true;
-	if(split)
-		world.solver = new CANNON.SplitSolver(solver);
-	else
-		world.solver = solver;
-	world.gravity.set(0,0,0);
-	world.broadphase = new CANNON.NaiveBroadphase();
-	// Create a slippery material (friction coefficient = 0.0)
-	physicsMaterial = new CANNON.Material("slipperyMaterial");
-	var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
-															physicsMaterial,
-															0.0, // friction coefficient
-															0.3  // restitution
-															);
-	// We must add the contact materials to the world
-	world.addContactMaterial(physicsContactMaterial);
-
-
-	// LIGHT
-	var light = new THREE.AmbientLight( 0x404040 );
-	scene.add( light );
-
-	var spotLight = new THREE.SpotLight( 0xA71094, 1 );
-	spotLight.position.set( 100, 100, 100 );
-
-	spotLight.castShadow = true;
-
-	spotLight.shadowMapWidth = 1024;
-	spotLight.shadowMapHeight = 1024;
-
-	spotLight.shadowCameraNear = 500;
-	spotLight.shadowCameraFar = 4000;
-	spotLight.shadowCameraFov = 30;
-
-	scene.add( spotLight );
-
-	// CAMERA
-	camera = new THREE.TargetCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-
-	// MESH
-
-	//  Material
-	texture = THREE.ImageUtils.loadTexture('/img/tex_00.jpg');
-	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-	texture.anisotropy = 16;
-	material = new THREE.MeshPhongMaterial( {specular: 0x45819A, map: texture} );
-
-	//  Ground
-	geometry = new THREE.PlaneGeometry( 1000, 1000 );
-	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
-	ground = new THREE.Mesh( geometry, material );
-	scene.add( ground );
-	var groundShape = new CANNON.Plane();
-	var groundBody = new CANNON.RigidBody(0,groundShape,physicsMaterial);
-	groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
-	world.add(groundBody);
-
-	//  Player
-	var ballShape = new CANNON.Sphere( 7 );
-	var playerx = new CANNON.RigidBody(0,boxShape);
-	playerx.useQuaternion = true;
-	world.add(playerx);
-	c_objs.push(playerx);
-	geometry = new THREE.SphereGeometry( ballShape.radius );
-	var player = new THREE.Mesh( geometry, material );
-	scene.add( player );
-	obj.push(player);
-
-	//  Opponent
-	var oppx = new CANNON.RigidBody(0,ballShape);
-	oppx.useQuaternion = true;
-	world.add(oppx);
-	c_objs.push(oppx);
-	var opp = new THREE.Mesh( geometry, material );
-	scene.add( opp );
-	obj.push( opp );
-
-
-	// MISC MESH
-	var size = 0.5;
-	var he = new CANNON.Vec3(size,size,size*0.1);
-	var boxShape = new CANNON.Box(he);
-	var testx = new CANNON.RigidBody(0,boxShape);
-	testx.useQuaternion = true;
-	world.add(testx);
-	c_objs.push(testx);
-	geometry = new THREE.BoxGeometry(he.x*2,he.y*2,he.z*2);
-	var test = new THREE.Mesh( geometry, material );
-	test.position.set(-50, 0, 10);
-	testx.position.set(-50, 0, 10);
-	scene.add( opp );
-	obj.push( opp );
-
-	// SKYBOX
-	var skyGeometry = new THREE.BoxGeometry( 1000, 1000, 1000 );
-	var materialArray = [];
-	for (var i = 0; i < 6; i++)
-		materialArray.push( new THREE.MeshBasicMaterial({
-			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
-			side: THREE.BackSide
-		}));
-	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
-	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
-	scene.add( skyBox );
-
-	// CONTROLS
-	controls = new THREE.PointerLockControls( playerx.mesh );
-	scene.add( controls.getObject() );
-
-	// controls = new THREE.FlyControls( player );
-	// controls.movementSpeed = 100;
-	// controls.domElement = container;
-	// controls.rollSpeed = 1;
-	// controls.autoForward = false;
-	// controls.dragToLook = false;
-
-	// Link Camera
-	camera.addTarget({
-		name: 'Main',
-		targetObject: finalObject,
-		cameraPosition: new THREE.Vector3(0, 20, 80),
-		fixed: false,
-		stiffness: 1,
-		matchRotation: false
-	});
-	camera.setTarget( 'Main' );
-
-	// RENDER
-	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	var renderer	= new THREE.WebGLRenderer();
 	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
 
-	//  Put in container
-	container.innerHTML = "";
-	container.appendChild( renderer.domElement );
+	var updateFcts	= [];
+	var scene	= new THREE.Scene();
+	var camera	= new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+	camera.position.z = 3;
 
-	//  Listen socket
-	socket.on('opp', function (data) {
-		opponent.position.set(data.message.position.x, data.message.position.y, data.message.position.z);
-		// opponent.rotation.set(data.message.rotation._x, data.message.rotation._y, data.message.rotation._z);
-		opponent.rotation.y = data.message.rotation._y;
-		//
-		// geometry = new THREE.BoxGeometry( 10, 10, 10 );
-		// opponent = new THREE.Mesh( geometry, material );
-		// opponent.position.y = 50;
-		// scene.add( opponent );
+	var worldx	= new THREEx.CannonWorld().start();
 
+	//////////////////////////////////////////////////////////////////////////////////
+	//		add an object and make it move					//
+	//////////////////////////////////////////////////////////////////////////////////
+
+	var stoneMaterial	= new CANNON.Material('stone');
+	worldx.world.addContactMaterial(new CANNON.ContactMaterial(
+		stoneMaterial,
+		stoneMaterial,
+		0.3,	// friction
+		0.1	// Restitution
+	))
+
+;(function(){
+	var geometry	= new THREE.SphereGeometry(0.5)
+	var material	= new THREE.MeshNormalMaterial()
+	var mesh	= new THREE.Mesh(geometry, material)
+	mesh.position.y	= 3
+	mesh.name	= 'ball'
+	scene.add( mesh )
+	var bodyx	= new THREEx.CannonBody({
+		mesh	: mesh,
+		material: stoneMaterial,
+	}).addTo(worldx)
+	updateFcts.push(function(delta, now){
+		bodyx.update(delta, now)
+	})
+
+	bodyx.body.angularVelocity.set(0,0,20)
+
+//	bodyx.body.angularDamping	= 0.0;
+//	bodyx.body.linearDamping	= 0.0;
+})()
+
+;(function(){
+	var geometry	= new THREE.CubeGeometry(10, 0.1, 10);
+	var material	= new THREE.MeshNormalMaterial();
+	var mesh	= new THREE.Mesh(geometry, material);
+	mesh.position.y	= -1
+	mesh.position.z	= -3
+	scene.add( mesh );
+	// init physics
+	var bodyx	= new THREEx.CannonBody({
+		mesh	: mesh,
+		material: stoneMaterial,
+		mass	: 0
+	}).addTo(worldx)
+	updateFcts.push(function(delta, now){
+		bodyx.update(delta, now)
 	});
+})()
 
-	//  Resize
-	window.addEventListener( 'resize', onWindowResize, false );
+	//////////////////////////////////////////////////////////////////////////////////
+	//		render the scene						//
+	//////////////////////////////////////////////////////////////////////////////////
+	updateFcts.push(function(){
+		renderer.render( scene, camera );
+	})
 
-}
-
-function onWindowResize() {
-
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-
-	renderer.setSize( window.innerWidth, window.innerHeight );
-
-	render();
-
-}
-
-var dt = 1/60;
-function animate() {
-
-	requestAnimationFrame( animate );
-
-	// Update
-	render();
-	world.step( dt );
-	update_world();
-	socket.emit('player', {position: finalObject.position, rotation: finalObject.rotation});
-	//  Scene update
-	controls.update( clock.getDelta() );
-	camera.update( clock.getDelta() );
-	//  Stats update
-	stats.update();
-	statsx.update( renderer );
-
-}
-
-function update_world() {
-	for( var i = 0; i < c_objs.length; i++) {
-		c_objs[i].position.copy(objs[i].position);
-		c_objs[i].quaternion.copy(objs[i].quaternion);
-	}
-}
-
-function render() {
-
-	renderer.render( scene, camera );
-}
+	//////////////////////////////////////////////////////////////////////////////////
+	//		loop runner							//
+	//////////////////////////////////////////////////////////////////////////////////
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec){
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		updateFcts.forEach(function(updateFn){
+			updateFn(deltaMsec/1000, nowMsec/1000)
+		})
+	})
 
 </script>
