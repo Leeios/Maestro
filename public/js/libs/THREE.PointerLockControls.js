@@ -2,18 +2,16 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-var finalObject;
-
 THREE.PointerLockControls = function ( camera ) {
 
 	var scope = this;
 
-	camera.rotation.set( 0, 0, 0 );
+	// camera.rotation = { x: 0, y: 0, z: 0 };
 
 	var pitchObject = new THREE.Object3D();
 	pitchObject.add( camera );
 
-	finalObject = new THREE.Object3D();
+	var finalObject = new THREE.Object3D();
 	finalObject.position.y = 10;
 	finalObject.add( pitchObject );
 
@@ -153,7 +151,7 @@ THREE.PointerLockControls = function ( camera ) {
 		velocity.x -= velocity.x * 10.0 * delta;
 		velocity.z -= velocity.z * 10.0 * delta;
 
-		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+		// velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
 		if ( moveForward ) velocity.z -= 400.0 * delta;
 		if ( moveBackward ) velocity.z += 400.0 * delta;
@@ -161,24 +159,25 @@ THREE.PointerLockControls = function ( camera ) {
 		if ( moveLeft ) velocity.x -= 400.0 * delta;
 		if ( moveRight ) velocity.x += 400.0 * delta;
 
-		if ( isOnObject === true ) {
+		// if ( isOnObject === true ) {
 
-			velocity.y = Math.max( 0, velocity.y );
+		// 	velocity.y = Math.max( 0, velocity.y );
 
-		}
+		// }
+
 
 		finalObject.translateX( velocity.x * delta );
 		finalObject.translateY( velocity.y * delta );
 		finalObject.translateZ( velocity.z * delta );
 
-		if ( finalObject.position.y < 10 ) {
+		// if ( finalObject.position.y < 10 ) {
 
-			velocity.y = 0;
-			finalObject.position.y = 10;
+		// 	velocity.y = 0;
+		// 	finalObject.position.y = 10;
 
-			canJump = true;
+		// 	canJump = true;
 
-		}
+		// }
 
 		prevTime = time;
 

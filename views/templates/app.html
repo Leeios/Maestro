@@ -79,6 +79,7 @@ var playerx;
 
 var worldx	= new THREEx.CannonWorld().start();
 
+//MATERIALS
 var stoneMaterial	= new CANNON.Material('stone');
 worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	stoneMaterial,
@@ -157,8 +158,8 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	material.side = THREE.DoubleSide;
 
 	//  Ground
-	var geometry = new THREE.PlaneGeometry( 1000, 1000 );
-	geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+	var geometry = new THREE.CubeGeometry( 100, 10, 100 );
+	// geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 	ground = new THREE.Mesh( geometry, material );
 	ground.position.y = -20
 	scene.add( ground );
@@ -178,21 +179,21 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	playerx	= new THREEx.CannonBody({
 		mesh	: player,
 		material : stoneMaterial,
-		mass	: 0.01,
+		mass	: 0,
+		cannon2three: false
 	}).addTo(worldx);
-	updateFcts.push(function(delta, now) {
-		playerx.update(delta, now);
-	});
 
 	//  Opponent
 	geometry = new THREE.SphereGeometry( 7 );
 	opponent = new THREE.Mesh( geometry, material );
+	opponent.position.x = -30;
 	opponent.position.y = 50;
+	opponent.position.z = -30;
 	scene.add( opponent );
 	var oppx	= new THREEx.CannonBody({
 		mesh	: opponent,
 		material : stoneMaterial,
-		mass	: 0
+		mass	: 0.1
 	}).addTo(worldx);
 	updateFcts.push(function(delta, now) {
 		oppx.update(delta, now);
@@ -200,31 +201,30 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 
 	// MISC MESH
 	geometry = new THREE.BoxGeometry( 10, 10, 10 );
-	for (var i = 0; i < 10; i++) {
 	test = new THREE.Mesh( geometry, material );
-	test.position.x = -30 + Math.random() * 60;
-	test.position.y = -30 + Math.random() * 60;
-	test.position.z = -30 + Math.random() * 60;
+	test.position.x = -3;
+	test.position.y = 20;
+	// test.position.z = -30;
 	scene.add( test );
 	var testx	= new THREEx.CannonBody({
 		mesh	: test,
 		material : stoneMaterial,
-		mass	: 0.01,
+		mass	: 0.1
 	}).addTo(worldx);
 	updateFcts.push(function(delta, now) {
 		testx.update(delta, now);
 	});
-	}
 })();
 
 // CAMERA & CONTROLS
 (function() {
 
-	// controls = new THREE.PointerLockControls( playerx.mesh );
-	// scene.add( controls.getObject() );
+	controls = new THREE.PointerLockControls( playerx.mesh );
+	scene.add( controls.getObject() );
 
 	camera.addTarget({
 		name: 'Player',
+		targetObject: controls.getObject(),
 		targetObject: playerx.mesh,
 		cameraPosition: new THREE.Vector3(0, 20, 80),
 		fixed: false,
@@ -233,12 +233,18 @@ worldx.world.addContactMaterial(new CANNON.ContactMaterial(
 	});
 	camera.setTarget( 'Player' );
 
-	updateFcts.push(function(delta, now)
-	{
-		// controls.update(delta, now);
+	updateFcts.push(function(delta, now) {
 		camera.update(delta, now);
 	});
 })();
+
+
+updateFcts.push(function(delta, now) {
+	playerx.update(delta, now);
+});
+updateFcts.push(function(delta, now) {
+	controls.update(delta, now);
+});
 
 // RENDER
 updateFcts.push(function(){

@@ -80,21 +80,20 @@ THREEx.CannonBody	= function(opts){
 		}
 	}else{
 
-		var pos
 		this.update	= function(delta, now){
 			// get position/quaternion in worldMatrix
 			mesh.updateMatrixWorld()
 			var position	= new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld)
 			var quaternion	= new THREE.Quaternion().setFromRotationMatrix(mesh.matrixWorld)
 			// copy mesh.position to body.position
-			body.position.x		= position.x
-			body.position.y		= position.y
-			body.position.z		= position.z
+			body.position.x		= mesh.position.x
+			body.position.y		= mesh.position.y
+			body.position.z		= mesh.position.z
 			// copy mesh.quaternion to body.quaternion
-			body.quaternion.x	= quaternion.x
-			body.quaternion.y	= quaternion.y
-			body.quaternion.z	= quaternion.z
-			body.quaternion.w	= quaternion.w
+			body.quaternion.x	= mesh.quaternion.x
+			body.quaternion.y	= mesh.quaternion.y
+			body.quaternion.z	= mesh.quaternion.z
+			body.quaternion.w	= mesh.quaternion.w
 		}
 	}
 }

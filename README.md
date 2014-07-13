@@ -9,14 +9,17 @@ To start server on localhost:3000
 
 > node server.js
 
+PARTICULARITIES
+=======
+Remise en forme sous schéma updateFcts.push
 
 TODO
 =======
 
-- Bug de TP lorsque pause restart
-- Quelles donnees echanger ? rotation en private
-- Vue 3rd person avec y
-- Gerer collisions
+- Virer THREEx.cannon, faire son propre module
+- Modifier les translate de pointerlock en deplacement phys cannon js (applyforce ?)
+- Adapter/Simplifier pointerlock
+
 
 
 END
